@@ -19,53 +19,37 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.dto.Order;
 import com.exception.OrderServiceException;
-import com.respository.dao.OrderRepositoryImpl;
-import com.service.OrderServiceCacheImpl;
+import com.respository.dao.OrderRepository;
 
 @RestController
-@EnableAutoConfiguration
+@RequestMapping(value = "/ordercontroller")
 public class OrderController {
 
 	@Autowired
-	OrderRepositoryImpl orderRepository;
-	@Autowired
-	OrderServiceCacheImpl orderServiceCache;
+	OrderRepository orderRepository;
 	
-	@RequestMapping("/welcome")
+	@RequestMapping(value = "/welcome")
 	public @ResponseBody String welcome(){
 		System.out.println("OrderController.welcome()");
 		return "WElcome";
 	}
 	
-	@SuppressWarnings("unused")
 	@RequestMapping(value ="/neworder", method = RequestMethod.POST)
 	public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-		System.out.println("OrderController.createOrder()");
-		long generatedId = generateID();
-		Order resOrder =orderServiceCache.checkforOrder(generatedId);
-		if(resOrder!= null)
-			generatedId++;
-		order.setOrderId(generatedId);
 		try{
 			orderRepository.saveOrder(order);
-			if(order!= null)
 				return new ResponseEntity<Order>(order,HttpStatus.OK);
 		}catch(OrderServiceException ose){
 			return new ResponseEntity<Order>(order,HttpStatus.BAD_REQUEST);
 		}
-		return new ResponseEntity<Order>(HttpStatus.BAD_REQUEST);
 	}
 	
 	@RequestMapping(value ="/updateOrder/{id}", method = RequestMethod.PUT)
 	public ResponseEntity<Order> updateOrder(@PathParam(value = "id") long id,@RequestBody Order order) {
 		Order newOrder= null;
 		try{
-			if(id>0){
-				newOrder= orderRepository.getOrder(id);
-				if(newOrder.isFulfilmentDone()) return new ResponseEntity<Order>(order,HttpStatus.BAD_REQUEST);
-				orderRepository.updateOrder(order);
-			}
-			if(order!= null)
+			newOrder= orderRepository.updateOrder(order);
+			if(newOrder!= null)
 				return new ResponseEntity<Order>(order,HttpStatus.OK);
 		}catch(OrderServiceException ose){
 			return new ResponseEntity<Order>(order,HttpStatus.BAD_REQUEST);
@@ -78,10 +62,7 @@ public class OrderController {
 		Order order= null;
 		try{
 			if(id>0)
-				order= orderRepository.getOrder(id);
-			if(order!= null)
-				order.setFulfilmentDone(true);
-				order= orderRepository.updateOrder(order);
+				order= orderRepository.fulFillOrder(id);
 				return new ResponseEntity<Order>(order,HttpStatus.OK);
 		}catch(OrderServiceException ose){
 			return new ResponseEntity<Order>(order,HttpStatus.BAD_REQUEST);
@@ -104,9 +85,7 @@ public class OrderController {
 	public ResponseEntity<Map<String, Order>> getOrders() {
 		Map<String, Order> order= null;
 		try{
-				order= orderServiceCache.getFirstCache();
-				if(order== null)
-					order=orderServiceCache.addOrderstoCache();
+				order = orderRepository.getOrders();
 				return new ResponseEntity<Map<String, Order>>(order,HttpStatus.OK);
 		}catch(OrderServiceException ose){
 			return new ResponseEntity<Map<String, Order>>(order,HttpStatus.BAD_REQUEST);
